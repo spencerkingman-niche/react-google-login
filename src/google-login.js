@@ -10,6 +10,7 @@ class GoogleLogin extends Component {
     super(props)
     this.signIn = this.signIn.bind(this)
     this.enableButton = this.enableButton.bind(this)
+    this.onMountCallback = this.onMountCallback.bind(this)
     this.state = {
       disabled: true,
       hovered: false,
@@ -17,6 +18,19 @@ class GoogleLogin extends Component {
     }
   }
   componentDidMount() {
+    const {
+      jsSrc
+    } = this.props
+
+    loadScript(document, 'script', 'google-login', jsSrc, this.onMountCallback)
+  }
+  componentWillUnmount() {
+    this.enableButton = () => {}
+    const el = document.getElementById('google-login')
+    el.parentNode.removeChild(el)
+  }
+  onMountCallback() {
+    console.log('ON MOUNT CALLBACK')
     const {
       clientId,
       cookiePolicy,
@@ -32,27 +46,34 @@ class GoogleLogin extends Component {
       scope,
       accessType,
       responseType,
-      jsSrc
     } = this.props
 
-    loadScript(document, 'script', 'google-login', jsSrc, () => {
-      const params = {
-        client_id: clientId,
-        cookie_policy: cookiePolicy,
-        login_hint: loginHint,
-        hosted_domain: hostedDomain,
-        fetch_basic_profile: fetchBasicProfile,
-        discoveryDocs,
-        ux_mode: uxMode,
-        redirect_uri: redirectUri,
-        scope,
-        access_type: accessType
-      }
+    const params = {
+      client_id: clientId,
+      cookie_policy: cookiePolicy,
+      login_hint: loginHint,
+      hosted_domain: hostedDomain,
+      fetch_basic_profile: fetchBasicProfile,
+      discoveryDocs,
+      ux_mode: uxMode,
+      redirect_uri: redirectUri,
+      scope,
+      access_type: accessType
+    }
 
-      if (responseType === 'code') {
-        params.access_type = 'offline'
-      }
+    if (responseType === 'code') {
+      params.access_type = 'offline'
+    }
+    console.log('@@@@: GoogleLogin -> onMountCallback -> window.gapi', window.gapi)
+    console.log('@@@@: GoogleLogin -> onMountCallback -> typeof(window.gapi.load) !== function', typeof(window.gapi.load) !== 'function')
 
+    if(!window.gapi || typeof(window.gapi.load) !== 'function') {
+      // isSignedIn = false
+      setTimeout(function() {
+        this.onMountCallback()
+      }, 500)
+      return
+    } else {
       window.gapi.load('auth2', () => {
         this.enableButton()
         if (!window.gapi.auth2.getAuthInstance()) {
@@ -69,15 +90,6 @@ class GoogleLogin extends Component {
           this.signIn()
         }
       })
-    })
-  }
-  componentWillUnmount() {
-    this.enableButton = () => {}
-    try {
-      const el = document.getElementById('google-login')
-      el.parentNode.removeChild(el)
-    } catch (error) {
-      // just ignore it; the container is already removed
     }
   }
   enableButton() {
@@ -96,11 +108,14 @@ class GoogleLogin extends Component {
         prompt
       }
       onRequest()
+      console.log('@@@@: GoogleLogin -> signIn -> responseType', responseType)
       if (responseType === 'code') {
         auth2.grantOfflineAccess(options).then(res => onSuccess(res), err => onFailure(err))
       } else {
         auth2.signIn(options).then(res => this.handleSigninSuccess(res), err => onFailure(err))
+        console.log('@@@@: GoogleLogin -> signIn -> options', options)
       }
+      console.log('done with signIn')
     }
   }
   handleSigninSuccess(res) {
@@ -121,6 +136,7 @@ class GoogleLogin extends Component {
       givenName: basicProfile.getGivenName(),
       familyName: basicProfile.getFamilyName()
     }
+    console.log('calling onSuccess')
     this.props.onSuccess(res)
   }
 
