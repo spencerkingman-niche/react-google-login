@@ -114,10 +114,10 @@ class GoogleLogin extends Component {
       if (responseType === 'code') {
         auth2.grantOfflineAccess(options).then(res => onSuccess(res), err => onFailure(err))
       } else {
-        auth2.signIn(options).then(res => {
+        auth2.signIn(options).then(async res => {
           console.log('@@@@: GoogleLogin -> signIn -> res', JSON.stringify(res))
-          return this.handleSigninSuccess(res), err => onFailure(err)
-        })
+          return await this.handleSigninSuccess(res)
+        }, err => onFailure(err))
         console.log('@@@@: GoogleLogin -> signIn -> options', JSON.stringify(options))
       }
       console.log('done with signIn')
@@ -127,22 +127,30 @@ class GoogleLogin extends Component {
     /*
       offer renamed response keys to names that match use
     */
-    const basicProfile = res.getBasicProfile()
-    const authResponse = res.getAuthResponse()
-    res.googleId = basicProfile.getId()
-    res.tokenObj = authResponse
-    res.tokenId = authResponse.id_token
-    res.accessToken = authResponse.access_token
-    res.profileObj = {
-      googleId: basicProfile.getId(),
-      imageUrl: basicProfile.getImageUrl(),
-      email: basicProfile.getEmail(),
-      name: basicProfile.getName(),
-      givenName: basicProfile.getGivenName(),
-      familyName: basicProfile.getFamilyName()
+   try {
+
+     const basicProfile = res.getBasicProfile()
+     console.log('@@@@: GoogleLogin -> handleSigninSuccess -> basicProfile', basicProfile)
+     const authResponse = res.getAuthResponse()
+     console.log('@@@@: GoogleLogin -> handleSigninSuccess -> authResponse', authResponse)
+     res.googleId = basicProfile.getId()
+     res.tokenObj = authResponse
+     res.tokenId = authResponse.id_token
+     res.accessToken = authResponse.access_token
+     res.profileObj = {
+       googleId: basicProfile.getId(),
+       imageUrl: basicProfile.getImageUrl(),
+       email: basicProfile.getEmail(),
+       name: basicProfile.getName(),
+       givenName: basicProfile.getGivenName(),
+       familyName: basicProfile.getFamilyName()
+      }
+     console.log('@@@@: GoogleLogin -> handleSigninSuccess -> profileObj', res.profileObj)
+      console.log('calling onSuccess')
+      this.props.onSuccess(res)
+    } catch (err) {
+      console.log('err', err)
     }
-    console.log('calling onSuccess')
-    this.props.onSuccess(res)
   }
 
   render() {
